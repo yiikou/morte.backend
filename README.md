@@ -10,3 +10,15 @@ This project is for [MORTE](https://devpost.com/software/morte), which is a real
 2. Azure Emotion service.
 3. IBM Watson Speech-to-text service.
 4. Expose service.
+
+
+
+
+
+# Extention:
+
+1. Mark each audience's face and build profile for everyone.
+
+2. Support multiple camera as input to capture more faces.
+
+   
