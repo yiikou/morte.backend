@@ -1,5 +1,5 @@
 package com.joe.morte.backend.api;
 
-public class azureEmotion {
+public class WatsonSpeech2Text {
 
 }
