@@ -1,67 +1,194 @@
 package com.joe.morte.backend.implementation;
+
+import java.io.*;
 import java.net.URI;
+import java.net.URISyntaxException;
 
-import org.apache.http.impl.client.HttpClients;
-import org.springframework.beans.factory.annotation.Value;
 
+import com.joe.morte.backend.api.AzureEmotion;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+
+import javax.annotation.PostConstruct;
 
 @Configuration
-public class AzureEmotionImpl {
+public class AzureEmotionImpl implements AzureEmotion {
+    @Autowired
+    private ResourceLoader resourceLoader;
+    @Value("${azure.subscription.key}")
+    private String subscriptionKey;
+    private static final String faceAttributes =
+            "age,gender,headPose,smile,facialHair,glasses,emotion,hair,makeup,occlusion,accessories,blur,exposure,noise";
 
-    @Value( "${azure.key.name}" )
-    private String keyName;
-    @Value( "${azure.key.value}" )
-    private String keyValue;
+    private static final String uriBase =
+            "https://westcentralus.api.cognitive.microsoft.com/face/v1.0/detect";
+
+    private HttpPost emotionRequest;
+
+    @PostConstruct
+    public void init() throws URISyntaxException {
+        emotionRequest = createEmotionRequest();
+    }
+
+    private HttpPost createEmotionRequest() throws URISyntaxException {
+
+        URIBuilder builder = new URIBuilder(uriBase);
+
+        // Request parameters. All of them are optional.
+        builder.setParameter("returnFaceId", "true");
+        builder.setParameter("returnFaceLandmarks", "false");
+        builder.setParameter("returnFaceAttributes", faceAttributes);
+
+        // Prepare the URI for the REST API call.
+        URI uri = builder.build();
+        HttpPost request = new HttpPost(uri);
+
+        // Request headers.
+        // if input is an URL then change value to "application/json"
+        request.setHeader("Content-Type", "application/octet-stream");
+        request.setHeader("Ocp-Apim-Subscription-Key", subscriptionKey);
+        return request;
+    }
 
     @Lazy
     @Bean
-    public  Object demo()
-    {
-        HttpClient httpClient = HttpClients.createDefault();
+    public Object demo() {
 
-        try
-        {
-            // NOTE: You must use the same region in your REST call as you used to obtain your subscription keys.
-            //   For example, if you obtained your subscription keys from westcentralus, replace "westus" in the
-            //   URL below with "westcentralus".
-            URIBuilder uriBuilder = new URIBuilder("https://westus.api.cognitive.microsoft.com/emotion/v1.0/recognize");
-
-            URI uri = uriBuilder.build();
-            HttpPost request = new HttpPost(uri);
-
-            // Request headers. Replace the example key below with your valid subscription key.
-            request.setHeader("Content-Type", "application/json");
-            request.setHeader(keyName, keyValue);
-
-            // Request body. Replace the example URL below with the URL of the image you want to analyze.
-            StringEntity reqEntity = new StringEntity("{ \"url\": \"http://example.com/images/test.jpg\" }");
-            request.setEntity(reqEntity);
-
-            HttpResponse response = httpClient.execute(request);
+        try {
+            Resource fileResource = resourceLoader.getResource("classpath:RH_Louise_Lillian_Gish.jpg");
+//            String input = encodeFileToBase64Binary(fileResource.getFile());
+            InputStream input = encodeFileToStream(fileResource.getFile());
+            // Request body.
+//            StringEntity reqEntity = new StringEntity("{\"data\":\"" + input + "\"}");
+            InputStreamEntity reqEntity = new InputStreamEntity(input);
+            emotionRequest.setEntity(reqEntity);
+            // should create this every time?
+            HttpClient httpclient = new DefaultHttpClient();
+            // Execute the REST API call and get the response entity.
+            HttpResponse response = httpclient.execute(emotionRequest);
             HttpEntity entity = response.getEntity();
 
-            if (entity != null)
-            {
-                String msg = EntityUtils.toString(entity);
-                System.out.println(msg);
-                return String.valueOf(msg);
+            if (entity != null) {
+                // Format and display the JSON response.
+                System.out.println("REST Response:\n");
+
+                String jsonString = EntityUtils.toString(entity).trim();
+                if (jsonString.charAt(0) == '[') {
+                    JSONArray jsonArray = new JSONArray(jsonString);
+                    System.out.println(jsonArray.toString(2));
+                } else if (jsonString.charAt(0) == '{') {
+                    JSONObject jsonObject = new JSONObject(jsonString);
+                    System.out.println(jsonObject.toString(2));
+                } else {
+                    System.out.println(jsonString);
+                }
+                return jsonString;
             }
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
+            // Display error message.
             System.out.println(e.getMessage());
-            return e.getMessage();
         }
-        return null;
+        return "no msg";
+    }
+
+    @Override
+    public String detectEmotion(String input) {
+        try {
+//            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+//            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+//            ByteArrayInputStream inputStream =
+//                    new ByteArrayInputStream(outputStream.toByteArray());
+
+//            byte[] decoded = Base64.getDecoder().decode(input);
+//            InputStream stream = new ByteArrayInputStream(decoded);
+
+//            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//            int bytesRead;
+//            byte[] bytes = new byte[1024];
+//            while ((bytesRead = stream.read(bytes)) > 0) {
+//                byteArrayOutputStream.write(bytes, 0, bytesRead);
+//            }
+//            byte[] data = byteArrayOutputStream.toByteArray();
+
+            // Request body.
+            StringEntity reqEntity = new StringEntity("{\"data\":\"" + input + "\"}");
+            emotionRequest.setEntity(reqEntity);
+            // should create this every time?
+            HttpClient httpclient = new DefaultHttpClient();
+            // Execute the REST API call and get the response entity.
+            HttpResponse response = httpclient.execute(emotionRequest);
+            HttpEntity entity = response.getEntity();
+
+            if (entity != null) {
+                // Format and display the JSON response.
+                System.out.println("REST Response:\n");
+
+                String jsonString = EntityUtils.toString(entity).trim();
+                if (jsonString.charAt(0) == '[') {
+                    JSONArray jsonArray = new JSONArray(jsonString);
+                    System.out.println(jsonArray.toString(2));
+                } else if (jsonString.charAt(0) == '{') {
+                    JSONObject jsonObject = new JSONObject(jsonString);
+                    System.out.println(jsonObject.toString(2));
+                } else {
+                    System.out.println(jsonString);
+                }
+                return jsonString;
+            }
+        } catch (Exception e) {
+            // Display error message.
+            System.out.println(e.getMessage());
+        }
+        return "no msg";
+    }
+
+    private String encodeFileToBase64Binary(File file) {
+        String encodedfile = null;
+        try {
+            FileInputStream fileInputStreamReader = new FileInputStream(file);
+            byte[] bytes = new byte[(int) file.length()];
+            fileInputStreamReader.read(bytes);
+//            encodedfile = Base64.encodeBase64(bytes).toString();
+            encodedfile = new String(Base64.encodeBase64(bytes), "UTF-8");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return encodedfile;
+    }
+    private InputStream encodeFileToStream(File file) {
+        InputStream encodedfile = null;
+        try {
+            FileInputStream fileInputStreamReader = new FileInputStream(file);
+            byte[] bytes = new byte[(int) file.length()];
+            fileInputStreamReader.read(bytes);
+            encodedfile = new ByteArrayInputStream(bytes);
+            return encodedfile;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return encodedfile;
     }
 }

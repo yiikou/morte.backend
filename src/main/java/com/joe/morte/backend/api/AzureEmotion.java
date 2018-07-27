@@ -1,5 +1,5 @@
 package com.joe.morte.backend.api;
 
-public class AzureEmotion {
-
+public interface AzureEmotion {
+    public String detectEmotion(String input);
 }
