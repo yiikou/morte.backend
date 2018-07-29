@@ -1,4 +1,4 @@
-package com.joe.morte.backend.implementation;
+package com.joe.morte.backend.impl;
 
 import java.io.*;
 import java.net.URI;
@@ -12,12 +12,9 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -90,15 +87,7 @@ public class AzureEmotionImpl implements AzureEmotion {
                 System.out.println("REST Response:\n");
 
                 String jsonString = EntityUtils.toString(entity).trim();
-                if (jsonString.charAt(0) == '[') {
-                    JSONArray jsonArray = new JSONArray(jsonString);
-                    System.out.println(jsonArray.toString(2));
-                } else if (jsonString.charAt(0) == '{') {
-                    JSONObject jsonObject = new JSONObject(jsonString);
-                    System.out.println(jsonObject.toString(2));
-                } else {
-                    System.out.println(jsonString);
-                }
+
                 return jsonString;
             }
         } catch (Exception e) {
@@ -109,26 +98,10 @@ public class AzureEmotionImpl implements AzureEmotion {
     }
 
     @Override
-    public String detectEmotion(String input) {
+    public String detectEmotion(InputStream input) {
         try {
-//            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-//            imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
-//            ByteArrayInputStream inputStream =
-//                    new ByteArrayInputStream(outputStream.toByteArray());
-
-//            byte[] decoded = Base64.getDecoder().decode(input);
-//            InputStream stream = new ByteArrayInputStream(decoded);
-
-//            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-//            int bytesRead;
-//            byte[] bytes = new byte[1024];
-//            while ((bytesRead = stream.read(bytes)) > 0) {
-//                byteArrayOutputStream.write(bytes, 0, bytesRead);
-//            }
-//            byte[] data = byteArrayOutputStream.toByteArray();
-
             // Request body.
-            StringEntity reqEntity = new StringEntity("{\"data\":\"" + input + "\"}");
+            InputStreamEntity reqEntity = new InputStreamEntity(input);
             emotionRequest.setEntity(reqEntity);
             // should create this every time?
             HttpClient httpclient = new DefaultHttpClient();
@@ -141,15 +114,9 @@ public class AzureEmotionImpl implements AzureEmotion {
                 System.out.println("REST Response:\n");
 
                 String jsonString = EntityUtils.toString(entity).trim();
-                if (jsonString.charAt(0) == '[') {
-                    JSONArray jsonArray = new JSONArray(jsonString);
-                    System.out.println(jsonArray.toString(2));
-                } else if (jsonString.charAt(0) == '{') {
-                    JSONObject jsonObject = new JSONObject(jsonString);
-                    System.out.println(jsonObject.toString(2));
-                } else {
-                    System.out.println(jsonString);
-                }
+
+                System.out.println(jsonString);
+
                 return jsonString;
             }
         } catch (Exception e) {
@@ -175,6 +142,7 @@ public class AzureEmotionImpl implements AzureEmotion {
 
         return encodedfile;
     }
+
     private InputStream encodeFileToStream(File file) {
         InputStream encodedfile = null;
         try {
